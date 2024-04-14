@@ -75,7 +75,7 @@ fig = px.scatter(
         "y": "Országos kompetenciamérés medián pontszám",
     },
 )
-
+fig.write_html("out/fidesz_kompetencia.html")
 fig.show()
 
 print("Hello")
