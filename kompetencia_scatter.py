@@ -70,10 +70,10 @@ fig = px.scatter(
     size="total_voters",
     custom_data=["jaras"],
     title="Fidesz vs kompetencia járásonként",
-    labels={
-        "x": "Fidesz + Mi hazánk szavazók aránya",
-        "y": "Országos kompetenciamérés medián pontszám",
-    },
+)
+
+fig.update_layout(
+    xaxis_title="Fidesz + Mi hazánk szavazók aránya", yaxis_title="Országos kompetenciamérés medián pontszám"
 )
 fig.write_html("index.html", full_html=False)
 fig.show()
