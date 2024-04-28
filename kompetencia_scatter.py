@@ -21,14 +21,17 @@ if not Path("save.pkl").is_file():
     for _, row in matematika_10.iterrows():
         matematika_10_dict[row["Járás"]] = row["50"]
 
-    valasztas_df = pd.read_excel("valasztas_2022/listas_eredmeny.xlsx")
+    # valasztas_df = pd.read_excel("valasztas_2022/listas_eredmeny.xlsx")
+    valasztas_df = pd.read_excel("valasztas_2022/Listás_szavazás_szkjkv.xlsx")
     print("valasztas excel loaded")
     valasztas = {}
     for _, row in valasztas_df.iterrows():
         if not pd.isna(row["TELEPÜLÉS"]):
             aktualis_telepules = row["TELEPÜLÉS"]
             if aktualis_telepules not in valasztas.keys():
-                valasztas[aktualis_telepules] = {"fidesz": 0, "ellen": 0}
+                valasztas[aktualis_telepules] = {"fidesz": 0, "ellen": 0, "össz_választópolgár": row["VÁLASZTÓPOLGÁR"]}
+            else:
+                valasztas[aktualis_telepules]["össz_választópolgár"] += row["VÁLASZTÓPOLGÁR"]
         else:
             if "FIDESZ" in row["LISTA"] or "HAZÁNK" in row["LISTA"]:
                 valasztas[aktualis_telepules]["fidesz"] += row["SZAVAZAT"]
@@ -37,10 +40,12 @@ if not Path("save.pkl").is_file():
 
     jarasok_fidesz = {jaras: 0 for jaras in set(telepules2jaras.values())}
     jarasok_ellen = {jaras: 0 for jaras in set(telepules2jaras.values())}
+    jarasok_ossz_valasztopolgar = {jaras: 0 for jaras in set(telepules2jaras.values())}
     for telepules in valasztas.keys():
         try:
             jarasok_fidesz[telepules2jaras[telepules]] += valasztas[telepules]["fidesz"]
             jarasok_ellen[telepules2jaras[telepules]] += valasztas[telepules]["ellen"]
+            jarasok_ossz_valasztopolgar[telepules2jaras[telepules]] += valasztas[telepules]["össz_választópolgár"]
         except KeyError:
             continue
 
@@ -48,7 +53,9 @@ if not Path("save.pkl").is_file():
     results_df["jaras"] = results_df.index
     results_df["fidesz"] = jarasok_fidesz
     results_df["ellen"] = jarasok_ellen
-    fidesz_ratio = results_df["fidesz"].to_numpy() / (results_df["fidesz"].to_numpy() + results_df["ellen"].to_numpy())
+    results_df["össz"] = jarasok_ossz_valasztopolgar
+    # fidesz_ratio = results_df["fidesz"].to_numpy() / (results_df["fidesz"].to_numpy() + results_df["ellen"].to_numpy())
+    fidesz_ratio = results_df["fidesz"].to_numpy() / results_df["össz"].to_numpy()
     results_df.insert(2, "fidesz_ratio", fidesz_ratio)
     total_voters = results_df["fidesz"].to_numpy() + results_df["ellen"].to_numpy()
     results_df.insert(3, "total_voters", total_voters)
@@ -60,7 +67,13 @@ else:
     with open('save.pkl', 'rb') as file:
         results_df = pickle.load(file)
 
+# add extra rows to create weighed trendlines
+weighting_rows = []
+for _, row in results_df.iterrows():
+    weight = round(row["össz"] / 1000)
+    weighting_rows += [row] * weight
 
+results_df = pd.concat([results_df, pd.DataFrame(weighting_rows)], ignore_index=True)
 
 fig = px.scatter(
     results_df,
@@ -70,12 +83,14 @@ fig = px.scatter(
     size="total_voters",
     custom_data=["jaras"],
     title="Fidesz vs kompetencia járásonként",
+    trendline="ols"
 )
 
 fig.update_layout(
-    xaxis_title="Fidesz + Mi hazánk szavazók aránya", yaxis_title="Országos kompetenciamérés medián pontszám"
+    # xaxis_title="Fidesz + Mi hazánk szavazók aránya az ellenzéki koalíció ", yaxis_title="Országos kompetenciamérés medián pontszám"
+    xaxis_title="Fidesz + Mi hazánk szavazók aránya az összes választópolgár számához viszonyítva", yaxis_title="Országos kompetenciamérés medián pontszám"
 )
-fig.write_html("index.html", full_html=False)
+fig.write_html("index2.html", full_html=False)
 fig.show()
 
 print("Hello")
